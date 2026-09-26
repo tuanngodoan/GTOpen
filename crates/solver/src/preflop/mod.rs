@@ -98,6 +98,22 @@ pub struct PreflopConfig {
     pub rake_cap: f64,
     #[serde(default = "default_true")]
     pub no_flop_no_drop: bool,
+    /// Fold-out rake gate (only matters when `no_flop_no_drop == false`): a
+    /// preflop hand won uncontested is raked only when at least this many
+    /// players put chips in VOLUNTARILY (a limp, call or raise beyond their
+    /// forced blind/straddle/ante post). The gate acts from 2 upward; the
+    /// default 1 skips nothing and reproduces the legacy behaviour exactly.
+    /// Every fold-out except a walk has at least one voluntary player (the
+    /// winner or a folded limper/raiser); a walk (everyone folds to
+    /// the big blind or straddler, zero voluntary players) is raked by the
+    /// legacy code on the matched blinds, and 1 keeps raking it.
+    /// 2 models "no drop below two voluntary players" rooms: a walk or an
+    /// open-raise that takes the blinds is not raked, while an open, a 3-bet
+    /// and a fold is. Must be in 1..=positions.len(). Serialized only when it
+    /// differs from 1 so default configs and saves stay byte-identical to the
+    /// pre-gate format.
+    #[serde(default = "default_fold_win_min_voluntary", skip_serializing_if = "is_default_fold_win_min_voluntary")]
+    pub fold_win_min_voluntary: u8,
     /// "raw" (R = 1) or "static" (positional realization vs SPR).
     #[serde(default = "default_realization")]
     pub realization: String,
@@ -121,6 +137,8 @@ pub struct PreflopConfig {
 }
 
 fn is_false(value: &bool) -> bool { !*value }
+fn default_fold_win_min_voluntary() -> u8 { 1 }
+fn is_default_fold_win_min_voluntary(value: &u8) -> bool { *value == 1 }
 
 impl PreflopConfig {
     pub fn first_to_act(&self) -> usize { usize::from(self.utg_straddle) }
@@ -1646,13 +1664,25 @@ impl PreflopSolver {
         }
     }
 
-    /// Rake charged at a fold-win terminal: nothing under no-flop-no-drop,
+    /// Rake charged at a fold-win terminal: nothing under no-flop-no-drop or
+    /// when a gate of 2+ `fold_win_min_voluntary` exceeds the players who
+    /// entered voluntarily (the default 1 never gates: legacy behaviour),
     /// otherwise the rake on the MATCHED pot only — the winner's uncalled
     /// chips are returned before the pot is raked (as the postflop fold
     /// terminal and every cardroom do), never raked as if they were called.
+    /// The GPU engine uploads these values as its fold-win pots, so this is
+    /// the single fold-win rake site for both engines.
     pub fn fold_win_rake(&self, nd: &PNode) -> f64 {
         if self.cfg.no_flop_no_drop {
             return 0.0;
+        }
+        if self.cfg.fold_win_min_voluntary > 1 {
+            let voluntary = (0..self.n)
+                .filter(|&i| nd.invested[i] > self.cfg.posts[i] + self.cfg.ante + 1e-9)
+                .count();
+            if voluntary < self.cfg.fold_win_min_voluntary as usize {
+                return 0.0;
+            }
         }
         let w = nd.winner as usize;
         let matched = nd
@@ -3089,6 +3119,12 @@ fn validate(cfg: &PreflopConfig) -> Result<usize, String> {
     if !cfg.rake_cap.is_finite() || cfg.rake_cap < 0.0 {
         return Err(format!("rake_cap must be finite and >= 0, got {}", cfg.rake_cap));
     }
+    if cfg.fold_win_min_voluntary == 0 || cfg.fold_win_min_voluntary as usize > n {
+        return Err(format!(
+            "fold_win_min_voluntary must be in 1..={n} (the seat count), got {}",
+            cfg.fold_win_min_voluntary
+        ));
+    }
     // Opens at or below the biggest post are silently dropped by
     // `legal_actions_of` (and with max_raises = 0 no raise — jam included —
     // is ever offered); without a limp such a config would build a
@@ -3776,3 +3812,5 @@ impl PreflopSolver {
 
 #[cfg(test)]
 mod checkpoint_tests;
+#[cfg(test)]
+mod fold_win_tests;
