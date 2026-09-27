@@ -2882,6 +2882,7 @@ async fn pf_node(
         if let Some(note) = result.history.iter().find_map(|h| h.strategy_note.clone()) {
             result.strategy_note = Some(note);
             result.strategy = None;
+            result.evs = None;
             result.exportable = false;
         }
         let publication = status.lock().unwrap().publication();

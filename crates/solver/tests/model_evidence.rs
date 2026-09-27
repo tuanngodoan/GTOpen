@@ -115,8 +115,12 @@ fn node_metadata_follows_limp_band_defense_contextual_and_point_lock_precedence(
     }
     for p in s.seat_profiles.iter_mut().flatten() {p.response.as_mut().unwrap().contextual_reraise=Some(contextual::MODEL_ID.into());}
     let(node,p)=path(&s,&["raise","raise"]);let before=s.average_strategy(node);let cache=s.contextual_cache_entries();
+    // Evidence metadata alone allocates no prediction; the full node view also
+    // prices later decisions (`evs`), which may memoize their predictions.
+    assert_eq!(s.node_model_evidence(node,None).unwrap().kind,"contextual_estimate");
+    assert_eq!(s.contextual_cache_entries(),cache);
     assert_eq!(s.node_view(&p).unwrap().model_evidence.unwrap().kind,"contextual_estimate");
-    assert_eq!(s.average_strategy(node),before);assert_eq!(s.contextual_cache_entries(),cache);
+    assert_eq!(s.average_strategy(node),before);
     s.lock_point(&p,None).unwrap();
     assert_eq!(s.node_view(&p).unwrap().model_evidence.unwrap().kind,"manual_lock");
     s.unlock_point(&p).unwrap();

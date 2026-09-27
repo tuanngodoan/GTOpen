@@ -2173,6 +2173,15 @@ pub struct PreflopNodeView {
     /// Action nodes: the actor's average strategy, na x 169 flattened.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub strategy: Option<Vec<f32>>,
+    /// Action nodes: the actor's EV in bb of taking each action with each
+    /// class, na x 169 flattened action-major like `strategy`
+    /// (`evs[a * 169 + h]`). Everyone afterwards plays the saved average
+    /// strategy; conditioned on opponents reaching this node. Values are
+    /// RELATIVE TO FOLDING here (a fold action's column is exactly 0), so only
+    /// differences between actions of one class are meaningful. Omitted
+    /// whenever `strategy` is, or when the evaluation fails or is cancelled.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub evs: Option<Vec<f32>>,
     /// Fraction of each class's combos still in the actor's range (0..1).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub reach: Option<Vec<f32>>,
@@ -2319,6 +2328,13 @@ impl PreflopSolver {
             (Vec::new(), None, None, None, None)
         };
         let strategy_note = self.strategy_note(node, &unreachable);
+        let evs = if nd.kind == KIND_ACTION && strategy_note.is_none() {
+            self.diagnostic_action_evs(path, false).ok().map(|rows| {
+                rows.iter().flat_map(|r| r.iter().map(|&v| v as f32)).collect()
+            })
+        } else {
+            None
+        };
         let exportable = unreachable.is_none() && nd.kind == KIND_POT_SHARE && nd.live.count_ones() == 2;
         let spr = if nd.kind == KIND_POT_SHARE {
             let mut min_left = f64::MAX;
@@ -2352,6 +2368,7 @@ impl PreflopSolver {
             } else { None },
             contextual_prediction: self.contextual_status(node),
             strategy: if strategy_note.is_none() {strategy} else {None},
+            evs,
             strategy_note,
             kind,
             actor,
