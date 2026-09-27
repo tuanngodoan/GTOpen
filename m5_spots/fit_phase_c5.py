@@ -416,6 +416,10 @@ def main():
         "clip": [0.2, 2.5],
         "meta": {
             "n_obs": len(rows), "r2": round(r2, 4),
+            # Which observation set produced this table — the shipped v5 was
+            # fitted on the 8-max 150-200 bb / rake 10 % mix, the N8 candidate
+            # on m5_out_n8 (6-max, 40-100 bb, 5 %/10 bb, 2.5x, `balanced` labs).
+            "dataset": os.path.basename(os.path.dirname(os.path.abspath(OBS))),
             "alpha": alpha,
             "rho_cells": {"f_srp": round(float(rho[0]), 4), "i_srp": round(float(rho[1]), 4),
                           "f_3bp": round(float(rho[2]), 4), "i_3bp": round(float(rho[3]), 4),

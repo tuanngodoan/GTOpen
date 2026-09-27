@@ -1,0 +1,102 @@
+{
+ "board": "AhKs2d",
+ "range_oop": "22,A2o:0.992,33,A3o:0.993,44,A4o,53s,54s,55,A5o,64s,65s,66:0.987,A6o,75s,76s,77:0.007,A7o,85s,86s,87s,98o,T8o:0.952,Q8o:0.381,K8o:0.872,A8o,95s,96s,97s,98s,J9o:0.562,Q9o:0.992,K9o,A9o,T5s,T7s,T8s,T9s,JTo,QTo:0.954,KTo:0.751,ATo,J5s,J7s,J8s,J9s,JTs,QJo:0.837,KJo:0.984,AJo:0.918,Q2s,Q3s,Q4s,Q5s,Q6s,Q7s,Q8s,Q9s,QTs,QJs,KQo:0.560,K2s,K3s,K4s,K5s,K6s,K7s,K8s,K9s,KTs,KJs,KQs,A2s,A3s,A4s,A5s,A6s,A7s,A8s,A9s,ATs,AJs:0.021",
+ "range_ip": "22,33,44,55,A5o:0.988,66,76s,77,A7o:0.893,86s:0.007,87s,88,A8o,97s:0.021,98s:0.912,99,A9o,T8s:0.992,T9s,TT,JTo:0.608,QTo:0.014,KTo:0.995,ATo,J8s:0.994,J9s:0.994,JTs,JJ,QJo:0.982,KJo:0.995,AJo,Q5s:0.014,Q8s:0.987,Q9s:0.961,QTs,QJs,QQ,KQo:0.985,AQo,K5s:0.974,K6s:0.945,K7s:0.992,K8s:0.992,K9s:0.862,KTs,KJs,KQs,KK,AKo,A2s,A3s,A4s,A5s,A6s,A7s,A8s,A9s,ATs,AJs,AQs,AKs,AA",
+ "tree": {
+  "starting_pot": 5.5,
+  "effective_stack": 47.5,
+  "rake_pct": 0.05,
+  "rake_cap": 10.0,
+  "oop": [
+   {
+    "bet": [
+     {
+      "PotPct": 30
+     },
+     {
+      "PotPct": 75
+     }
+    ],
+    "raise": [
+     {
+      "PrevMult": 3.0
+     }
+    ],
+    "donk": []
+   },
+   {
+    "bet": [
+     {
+      "PotPct": 75
+     }
+    ],
+    "raise": [
+     {
+      "PrevMult": 3.0
+     }
+    ],
+    "donk": []
+   },
+   {
+    "bet": [
+     {
+      "PotPct": 75
+     }
+    ],
+    "raise": [
+     {
+      "PrevMult": 3.0
+     }
+    ],
+    "donk": []
+   }
+  ],
+  "ip": [
+   {
+    "bet": [
+     {
+      "PotPct": 30
+     },
+     {
+      "PotPct": 75
+     }
+    ],
+    "raise": [
+     {
+      "PrevMult": 3.0
+     }
+    ],
+    "donk": []
+   },
+   {
+    "bet": [
+     {
+      "PotPct": 75
+     }
+    ],
+    "raise": [
+     {
+      "PrevMult": 3.0
+     }
+    ],
+    "donk": []
+   },
+   {
+    "bet": [
+     {
+      "PotPct": 75
+     }
+    ],
+    "raise": [
+     {
+      "PrevMult": 3.0
+     }
+    ],
+    "donk": []
+   }
+  ],
+  "allin_threshold": 0.85,
+  "add_allin": true,
+  "max_raises": 2
+ }
+}

@@ -143,6 +143,38 @@ def games_fixedpoint():
             {l: s for l, s in lines.items() if (gname, l) not in FP_DROP})
     return [(g, c, l) for g, (c, l) in merged.items()]
 
+# ---------------------------------------------- N8-shaped dataset (--n8) ----
+# The store under test is 6-max N8: 40-100 bb, 5 % rake capped at 10 bb, one
+# open size per variant (2-4x), N8's fold-out rule (rake only with >= 2
+# voluntary players) and the 2.5x 4-bet ladder. Labs run under `balanced` — the
+# payoff the store is generated with — so the observations describe the model
+# that will consume them, instead of the shipped `calibrated` table talking to
+# itself (the fixed-point loop). Lines are the standard 6-max shapes
+# `fit_phase_c5.spot_axes` parses, all open to 2.5x so the exported ranges
+# match the bucket under test; 12 of the 24 spots are 3-bet pots (guard:
+# MIN_3BP_SPOTS = 8).
+N8_OPENS = [2.5]          # ONE open size in the lab tree: `balanced_share`
+                          # reads `class_base` only, so the leaf has no size
+                          # axis to fit — and 3 sizes in one tree measured
+                          # ~11.1/12.2 GB VRAM at 55 s/iter on this 3060.
+N8_MULTS = [3.0, 4.5]
+N8_LINES = {
+    "utg_open_bb_call": [R(2.5), F, F, F, F, C],
+    "co_open_bb_call":  [F, F, R(2.5), F, F, C],
+    "btn_open_bb_call": [F, F, F, R(2.5), F, C],
+    "co_open_btn_3bet": [F, F, R(2.5), RM, F, F, C],
+    "btn_open_sb_3bet": [F, F, F, R(2.5), RM, F, C],
+    "btn_open_bb_3bet": [F, F, F, R(2.5), F, RM, C],
+}
+
+def n8_pf(stack):
+    cfg = pf(P6, stack, N8_OPENS, N8_MULTS, 4, True, False, 5.0, 10.0)
+    cfg.update(realization="balanced", no_flop_no_drop=False,
+               fold_win_min_voluntary=2, fourbet_mults=[2.5])
+    return cfg
+
+GAMES_N8 = [(f"n8_{d}", n8_pf(d), dict(N8_LINES)) for d in (40, 50, 75, 100)]
+
 # Postflop menu per Matthew: 30/75 + all-in on the flop, single size after
 # (raises 3x, raise cap 2). The full two-size-every-street menu explodes to
 # 100GB+ arenas on wide-range NL10 spots (pilot 2026-07-07: 8.2M nodes) —
@@ -252,6 +284,12 @@ def walk(steps):
 def stage_spots(games, iters, check, target, mini=False):
     os.makedirs(os.path.join(OUT, "spots"), exist_ok=True)
     manifest = {}
+    mpath = os.path.join(OUT, "manifest.json")
+    if os.path.exists(mpath):
+        # `--only` runs compose: the 4-game stage is split one game per
+        # invocation (a single call outlives a one-hour job clamp and writes
+        # the manifest only at the end), so merge what is already on disk.
+        manifest = json.load(open(mpath))
     for gname, cfg, lines in games:
         print(f"=== {gname}: solving lab game", flush=True)
         st, secs = solve_lab(cfg, iters, check, target)
@@ -283,10 +321,28 @@ def stage_spots(games, iters, check, target, mini=False):
     print(f"spots stage done: {len(manifest)} spots", flush=True)
 
 def stage_run(flops_file, iters, target):
-    spots = sorted(os.listdir(os.path.join(OUT, "spots")))
-    cli = os.path.join(ROOT, "target/release/solve-cli")
+    # Cheapest first — 3-bet pots, then shallow to deep. A 3-bet-pot spot
+    # solves in seconds per board, while a wide BB-defend SRP spot at 100 bb
+    # measured 35 s/board and 8.5 GB peak on the 3060; a one-hour job clamp
+    # would otherwise throw that unfinished spot away on every retry.
+    def cost(s):
+        try:
+            depth = int(s.split("n8_")[1].split("__")[0])
+        except (IndexError, ValueError):
+            depth = 0
+        return ("_3bet" not in s, depth, s)
+    spots = sorted(os.listdir(os.path.join(OUT, "spots")), key=cost)
+    cli = os.path.join(ROOT, "target/release/solve-cli"
+                       + (".exe" if os.name == "nt" else ""))
     env = dict(os.environ)
     env["LD_LIBRARY_PATH"] = "/usr/local/cuda/lib64:" + env.get("LD_LIBRARY_PATH", "")
+    # Windows: cudarc resolves `nvrtc64_*.dll` by bare name through
+    # LoadLibrary, so its bin directory has to be on PATH (run-stack.py:485
+    # does the same before starting the server). Without it, solve-cli panics
+    # with "Unable to dynamically load the nvrtc shared library".
+    nvrtc_bin = os.path.join(ROOT, ".cuda-nvrtc", "nvidia", "cuda_nvrtc", "bin")
+    if os.path.isdir(nvrtc_bin):
+        env["PATH"] = nvrtc_bin + os.pathsep + env.get("PATH", "")
     # wide-range spots (limped pots, NL10 defends) cost ~10x per flop; 40
     # flops x ~265 classes still out-samples 100 x ~42 on tight spots
     flops40 = os.path.join(ROOT, "m5_spots/flops40.txt")
@@ -345,12 +401,20 @@ def stage_run(flops_file, iters, target):
                 out.write(open(p).read())
     open(os.path.join(OUT, "DONE"), "w").write(
         f"finished in {time.time() - total_t0:.0f}s\n")
-    print("run stage done -> m5_out/realization_obs.jsonl", flush=True)
+    print(f"run stage done -> {OUT}/realization_obs.jsonl", flush=True)
 
 def main():
+    global OUT
     ap = argparse.ArgumentParser()
     ap.add_argument("--stage", choices=["spots", "run", "all"], default="all")
     ap.add_argument("--flops", default=os.path.join(ROOT, "m5_spots/flops100.txt"))
+    ap.add_argument("--out-dir", default=OUT,
+                    help="where spots/obs land (default: m5_out)")
+    ap.add_argument("--only", default=None,
+                    help="restrict the run to one game by name (e.g. n8_40)")
+    ap.add_argument("--n8", action="store_true",
+                    help="N8-shaped 6-max dataset: 40/50/75/100 bb, 2-3x opens, "
+                         "rake 5 %/10 bb, labs under `balanced`")
     ap.add_argument("--iters", type=int, default=900)
     ap.add_argument("--target", type=float, default=0.3)
     ap.add_argument("--lab-iters", type=int, default=1500)
@@ -365,8 +429,17 @@ def main():
                          "under the shipped calibrated table")
     args = ap.parse_args()
 
+    OUT = os.path.abspath(args.out_dir)
     os.makedirs(OUT, exist_ok=True)
     games = GAMES
+    if args.n8:
+        if args.round2 or args.fixedpoint:
+            raise SystemExit("--n8 is its own dataset; drop --round2/--fixedpoint")
+        games = GAMES_N8
+    if args.only:
+        games = [g for g in games if g[0] == args.only]
+        if not games:
+            raise SystemExit(f"no game named {args.only!r} in this dataset")
     if args.round2:
         games = GAMES_R2
     if args.fixedpoint:
