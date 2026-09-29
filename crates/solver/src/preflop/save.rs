@@ -260,7 +260,7 @@ mod tests {
             stack: 2.0, posts: vec![0.0, 0.5, 1.0], ante: 0.0,
             limp: false, open_raises: vec![], raise_mults: vec![],
             max_raises: 1, add_allin: true, allin_threshold: 0.85,
-            rake_pct: 0.0, rake_cap: 0.0, no_flop_no_drop: true,
+            rake_pct: 0.0, rake_cap: 0.0, no_flop_no_drop: true, fold_win_min_voluntary: 1,
             realization: "raw".into(), call_only_seats: vec![],
             open_raises_by_seat: None, fourbet_mults: None, fourbet_mults_by_seat: None, raise_mults_by_seat: None,
         };
@@ -329,6 +329,30 @@ mod tests {
         // A future/unknown payoff model must never silently reinterpret arenas.
         rewrite_model(path, Some("unknown_future_model"));
         assert!(PreflopSolver::load_game(path, original.eq.clone()).is_err());
+        std::fs::remove_file(path).unwrap();
+    }
+
+    #[test]
+    fn fold_win_gate_round_trips_and_saves_without_it_load_as_one() {
+        let path = std::env::temp_dir().join(format!("gtopen-fold-win-gate-{}.gtop", std::process::id()));
+        let path = path.to_str().unwrap();
+        let saved_config = |path: &str| -> serde_json::Value {
+            let bytes = std::fs::read(path).unwrap();
+            let start = MAGIC_LEGACY.len();
+            let end = start + bytes[start..].iter().position(|&b| b == b'\n').unwrap();
+            serde_json::from_slice::<serde_json::Value>(&bytes[start..end]).unwrap()["config"].clone()
+        };
+        let mut gated = fixture();
+        gated.cfg.fold_win_min_voluntary = 2;
+        gated.save_game(path).unwrap();
+        assert_eq!(saved_config(path)["fold_win_min_voluntary"], 2);
+        assert_eq!(PreflopSolver::load_game(path, gated.eq.clone()).unwrap().cfg.fold_win_min_voluntary, 2);
+        // The default is omitted, so the header matches pre-gate saves, and a
+        // header without the key (every older save) loads as 1.
+        let plain = fixture();
+        plain.save_game(path).unwrap();
+        assert!(saved_config(path).get("fold_win_min_voluntary").is_none());
+        assert_eq!(PreflopSolver::load_game(path, plain.eq.clone()).unwrap().cfg.fold_win_min_voluntary, 1);
         std::fs::remove_file(path).unwrap();
     }
 }

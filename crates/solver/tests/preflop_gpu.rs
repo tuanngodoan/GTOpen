@@ -45,6 +45,40 @@ fn gpu_matches_cpu_coupled_three_way() {
     run_equivalence(cpu, gs);
 }
 
+/// Raked fold-outs gated at two voluntary players (N8 rule): an open that
+/// takes the blinds is unraked, an open + 3-bet + fold is raked. The device
+/// fold-win pots must follow the same gate as the CPU terminals.
+#[test]
+fn gpu_matches_cpu_fold_win_gate_two_voluntary() {
+    let mut cfg = hu25();
+    cfg.positions = vec!["BTN".into(), "SB".into(), "BB".into()];
+    cfg.posts = vec![0.0, 0.5, 1.0];
+    cfg.stack = 8.0;
+    cfg.limp = false;
+    cfg.open_raises = vec![2.0];
+    cfg.raise_mults = vec![3.0];
+    cfg.max_raises = 2;
+    cfg.add_allin = false;
+    cfg.realization = "raw".into();
+    cfg.no_flop_no_drop = false;
+    cfg.fold_win_min_voluntary = 2;
+    let mut cpu = PreflopSolver::new(cfg.clone(), table()).unwrap();
+    let mut gs = PreflopSolver::new(cfg.clone(), table()).unwrap();
+    let mut ungated = cfg;
+    ungated.fold_win_min_voluntary = 1;
+    let reference = PreflopSolver::new(ungated, table()).unwrap();
+    let (mut skipped, mut raked) = (0, 0);
+    for (nd, legacy) in cpu.nodes.iter().zip(&reference.nodes).filter(|(n, _)| n.kind == 1) {
+        let (gate, old) = (cpu.fold_win_rake(nd), reference.fold_win_rake(legacy));
+        if gate == 0.0 && old > 0.0 { skipped += 1; }
+        if gate > 0.0 { assert_eq!(gate, old); raked += 1; }
+    }
+    assert!(skipped > 0 && raked > 0, "gate must skip some fold-outs and keep others: {skipped} / {raked}");
+    cpu.prune = false;
+    gs.prune = false;
+    run_equivalence(cpu, gs);
+}
+
 #[test]
 fn gpu_matches_cpu_live_utg_straddle() {
     for n in [3, 4] {
@@ -83,6 +117,7 @@ fn hu25() -> PreflopConfig {
         rake_pct: 5.0,
         rake_cap: 1.0,
         no_flop_no_drop: true,
+        fold_win_min_voluntary: 1,
         realization: "static".into(),
         call_only_seats: vec![],
         open_raises_by_seat: None,
@@ -314,6 +349,7 @@ fn gpu_push_fold_anchors() {
         rake_pct: 0.0,
         rake_cap: 0.0,
         no_flop_no_drop: true,
+        fold_win_min_voluntary: 1,
         realization: "raw".into(),
         call_only_seats: vec![],
         open_raises_by_seat: None,

@@ -1,0 +1,102 @@
+{
+ "board": "AhKs2d",
+ "range_oop": "22,A2o,33,A3o,43s,44,A4o,52s:0.958,53s,54s,55:0.756,K5o,A5o,64s,65s,K6o,A6o,75s,76s,87o:0.134,K7o:0.609,A7o,85s,86s,87s,98o,T8o,Q8o,K8o,A8o,95s,96s,97s,98s,T9o:0.501,J9o,Q9o,K9o:0.969,A9o,T5s,T6s:0.554,T7s,T8s,T9s,JTo,QTo:0.923,KTo,ATo:0.786,J2s:0.029,J3s:0.985,J4s:0.065,J5s,J6s,J7s,J8s,J9s,JTs,QJo,KJo,Q2s,Q3s,Q4s,Q5s,Q6s,Q7s,Q8s,Q9s,QTs,QJs,KQo:0.262,K2s,K3s,K4s,K5s,K6s,K7s,K8s,K9s,KTs,KJs,KQs:0.165,A2s,A3s,A4s,A5s,A6s,A7s,A8s,A9s",
+ "range_ip": "22,A2o,33,A3o,44,A4o,55,A5o,66,A6o,76s,77,A7o,87s,88,K8o:0.979,A8o,97s:0.977,98s,99,Q9o:0.094,K9o,A9o,T7s:0.707,T8s,T9s,TT,JTo,QTo,KTo,ATo,J7s:0.946,J8s,J9s,JTs,JJ,QJo,KJo,AJo,Q5s,Q6s:0.989,Q7s:0.012,Q8s,Q9s,QTs,QJs,QQ,KQo,AQo,K2s,K3s,K4s,K5s,K6s,K7s,K8s,K9s,KTs,KJs,KQs,KK,AKo,A2s,A3s,A4s,A5s,A6s,A7s,A8s,A9s,ATs,AJs,AQs,AKs,AA",
+ "tree": {
+  "starting_pot": 5.5,
+  "effective_stack": 37.5,
+  "rake_pct": 0.05,
+  "rake_cap": 10.0,
+  "oop": [
+   {
+    "bet": [
+     {
+      "PotPct": 30
+     },
+     {
+      "PotPct": 75
+     }
+    ],
+    "raise": [
+     {
+      "PrevMult": 3.0
+     }
+    ],
+    "donk": []
+   },
+   {
+    "bet": [
+     {
+      "PotPct": 75
+     }
+    ],
+    "raise": [
+     {
+      "PrevMult": 3.0
+     }
+    ],
+    "donk": []
+   },
+   {
+    "bet": [
+     {
+      "PotPct": 75
+     }
+    ],
+    "raise": [
+     {
+      "PrevMult": 3.0
+     }
+    ],
+    "donk": []
+   }
+  ],
+  "ip": [
+   {
+    "bet": [
+     {
+      "PotPct": 30
+     },
+     {
+      "PotPct": 75
+     }
+    ],
+    "raise": [
+     {
+      "PrevMult": 3.0
+     }
+    ],
+    "donk": []
+   },
+   {
+    "bet": [
+     {
+      "PotPct": 75
+     }
+    ],
+    "raise": [
+     {
+      "PrevMult": 3.0
+     }
+    ],
+    "donk": []
+   },
+   {
+    "bet": [
+     {
+      "PotPct": 75
+     }
+    ],
+    "raise": [
+     {
+      "PrevMult": 3.0
+     }
+    ],
+    "donk": []
+   }
+  ],
+  "allin_threshold": 0.85,
+  "add_allin": true,
+  "max_raises": 2
+ }
+}

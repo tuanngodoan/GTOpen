@@ -185,6 +185,13 @@ struct PreflopStatus {
     /// Versioned multiway payoff model; saved games retain their original model.
     #[serde(default)]
     multiway_equity_model: String,
+    /// Active fold-out rake gate of the built game (`PreflopConfig::
+    /// fold_win_min_voluntary`); null until a preflop game is built or loaded.
+    fold_win_min_voluntary: Option<u8>,
+    /// Heads-up realization model of the built game ("raw" | "static" |
+    /// "calibrated" | "balanced"); null until a game is built or loaded.
+    /// `realization_note` reports a calibrated fallback, if any.
+    realization: Option<String>,
 }
 
 struct Session {
@@ -1082,6 +1089,8 @@ async fn pf_build(
     status.frozen = built.seat_frozen.clone();
     status.realization_note = built.realization_note.clone();
     status.multiway_equity_model = multiway_equity_model.into();
+    status.fold_win_min_voluntary = Some(built.cfg.fold_win_min_voluntary);
+    status.realization = Some(built.cfg.realization.clone());
     pf_install_session(
         &state,
         PreflopSession {
@@ -1735,7 +1744,7 @@ struct PfModelEvidenceRequest {
 
 /// Pure provenance inspection; no AppState or live solver lock is involved.
 async fn pf_capabilities() -> Json<serde_json::Value> {
-    Json(serde_json::json!({"raise_multiples":true,"model_evidence_sizing":true,"early_preview_v1":true,"fresh_build_multiway_models":["coupled_deck_v1"]}))
+    Json(serde_json::json!({"raise_multiples":true,"model_evidence_sizing":true,"early_preview_v1":true,"fresh_build_multiway_models":["coupled_deck_v1"],"fold_win_min_voluntary":true}))
 }
 
 async fn pf_model_evidence(
@@ -1907,6 +1916,8 @@ async fn pf_load_game(
         frozen: loaded.seat_frozen.clone(),
         realization_note: loaded.realization_note.clone(),
         multiway_equity_model: loaded.multiway_equity_model().into(),
+        fold_win_min_voluntary: Some(loaded.cfg.fold_win_min_voluntary),
+        realization: Some(loaded.cfg.realization.clone()),
         ..Default::default()
     };
     pf_install_session(
@@ -2871,6 +2882,7 @@ async fn pf_node(
         if let Some(note) = result.history.iter().find_map(|h| h.strategy_note.clone()) {
             result.strategy_note = Some(note);
             result.strategy = None;
+            result.evs = None;
             result.exportable = false;
         }
         let publication = status.lock().unwrap().publication();
